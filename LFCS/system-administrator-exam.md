@@ -1,0 +1,850 @@
+# Linux Foundation Certified System Administrator
+no prereqs
+25% essential commands
+20% operation of running systems
+10% user and group mgmt
+12% networking
+20% service config
+13% storage mgmt 
+
+exam is ENTIRELY performance based (no questions)
+$375, online proctored 
+
+# keyboard navigation
+- ctrl + e: end of line
+- ctrl + a: beginning of line
+- alt + r or l arrow to go back/foward a word 
+
+# how to search help pages
+- man pages can be searched with / and navigate with n and N
+- `<program> --help | grep <query>` to search a term in a page (in some cases)
+
+# Essential Commands 
+## Login Methods
+- local text-mode console
+    - i.e. when it asks for username and password (password is hidden)
+- local graphical-mode console
+- remote text-mode login
+    - typically uses open SSH daemon on all system; very standardized 
+        - ssh uses encryption to protection connections (far better than predecessor, telnet)
+        - ssh daemon on remote machine constantly listens for ssh connections 
+    - `ssh user@machine.ip` to connect to remote machine
+- remote graphical mode login
+    - must know how the admin config'd the remote server, since there are lots of options
+    - VNC often used, but RDP could also be used 
+        - boils down to downloading the right app and connecting that way
+- terms
+    - console (aka terminal)
+        - screen where OS displays text 
+    - virtual terminal
+        - ctrl + alt + f2 on keyboard to get a terminal on a local machine 
+    - terminal emulator
+        - graphical app that runs in window and performs console actions (i.e. iTerm2)
+## Read & Use System Documentation
+- `command --help`
+    - will generally provide short blurbs on using different commands 
+    - navigate help pages w arrow keys or pg up/down and q to quit 
+- `man command`
+    - for detailed manual of commands 
+    - `man man` gives a table of pages the manual contains & differentiates between programs and libraries
+- `apropos <search query>`
+    - search through man pages
+    - relies on a database; can be created manually w `sudo mandb` on new server. On servers that have been up for multiple days, should be there already 
+    - commands will only be found in sections 1 and 8
+        - `apropos -s 1,8 <search query>` to only search for specific commands 
+- tab suggestions and autocomplete 
+    - single tab to fill the rest of the command 
+    - double tab for more options 
+## Create, delete. copy, and move files and directories 
+- `ls` list 
+    - `ls -a` list all
+    - `ls /var/log` list remote dir 
+        - `ls -l /var/log` long list remote dir 
+    - `ls -al` long list all 
+    - `ls -alh` long list all + human readable sizes (MB/GB)
+- filesystem tree 
+    - has root, branches, leaves (although inverted)
+    - `/` top level root dir 
+    - absolute path always starts with root then subdirectories then files (although don't need a file defined)
+    - relative path
+        - based on current/working directory (`pwd`(print working directory))
+            - when working on the terminal, always w/n a directory 
+        - `cd /var/log`
+    - `cd -` go to previous directory 
+    - `cd` with no options will navigate to home dir 
+- creating files 
+    - `touch <filename>` to create a file
+        - can use absolute or relative paths to define where to create, prepended to filename 
+- creating directories
+    - `mkdir <directory-name>`
+- copying files 
+    - `cp <source> <destination>`
+    - good practice to end directory destinations with a /
+        - `cp Receipt.pdf Receipts/`
+- copying dirs
+    - `cp -r <source> <dest>` recursively copy the dir and everything w/n it 
+        - if there is a directory in the dest dir with the same name as the source dir, the recursive copy will put all the files in the directory with the same name
+            - e.g. `cp -r Receipts/ CopyOfReceipts/` and `CopyOfReceipts` had `/Receipts/` in it, path to find the files would be `CopyOfReceipts/Receipts/<files>`
+    - leaves a copy of both files in both place
+- moving files
+    - `mv <source> <dest>` permanently move a file from one place to another 
+        - don't need to use `-r` when moving dirs 
+- deleting files and directories
+    - `rm <file>` to delete files
+    - `rm -r <directory>` to delete dirs 
+## Create & Manage Hard Links
+- Inodes 
+    - `stat` as part of the details, inodes listed
+        - also lists exact time of access/modify/change/creation 
+    - keep track of location of blocks around the disk and permissions and access time 
+        - inode points to where all the blocks of data that make up the file are 
+- hard links    
+    - when a file is created, a hard link is created to the inode associated w it 
+    - rather than copying the file to somewhere else and duplicating it, have a file point to the inode to reference it
+    - `ln <path-to-target-file> <path-to-link-file>`
+        - same data can be accessed at different locations by different file names 
+    - deleting a file that has multiple hard links only deletes the hard link of the associated file. Once there are zero links to data, then the data is deleted 
+    - limitations and considerations
+        - can only HL files, not dirs
+        - can only HL files on same filesystem (e.g. can't link b/w mounts)
+        - need proper right permissions for the file for all users to access it 
+        - performing a chmod on one side of the links will adjust perms for the inode itself 
+## Create & Manage Soft Links
+- `ln -s <path-to-target-file> <path-to-link-file>`
+    - when performing `ls -l`,  `lrwxrwxrwx` will be listed along with an arrow to where it links 
+        - perms of soft link don't matter, so all rwx are listed 
+        - perms of underlying file apply 
+    - simply are paths pointing to a file/dir 
+    - can soft link to a dir or file 
+    - setting both the target and link dir paths renames the symlink to the destination dir 
+    - `ln -s <path-to-target> <symlink-name>`
+        - in the dir where the symlink should be, create a new link to another area with a custom name
+## List, Set, and Change File Permissions 
+- Owners and Groups 
+    - any file dir is owned by a user (first name listed in `ls -l`)
+        - only owner (or root) can change the perms of dir 
+    - group is listed after owner in `ls -l`
+    - `chgrp <group-name> <file-or-directory>`
+        - change group
+    - `groups` to list groups 
+    - `chown <user> <file-or-dir>`
+        - change owner, although user would then need to be both in the correct group 
+- file and dir perms 
+    - file perms 
+        - `ls -l`: the first character listed is what type of entry it is (file, special file, dir, etc)
+        - user, group, other users permissions listed next
+            - owner (u)
+            - group (g)
+            - others (o)
+            - bit & purpose
+                - r: read file
+                - w: write to file
+                - x: execute (run)
+                - -: no permission 
+    - dir perms 
+        - bit & purpose
+            - r: read dir
+            - w: write to dir
+            - x: execute into
+                - to be able to cd into dir for example 
+            - -: no perms 
+    - evaluating perms 
+        - permissions evaluated from left to right
+            - e.g. `-r--rw----` indicates owner can read and group can read/right
+                - even if owner was in the group, they would NOT be able to write b/c the first set of perms were evaluated 
+    - adding perms 
+        - adding or removing from existing perms
+            - `chmod <permissions> <file-or-dir>`
+                - `u+[list of perms]` for owner 
+                    - `u+w` or `u+rw`
+                - `g+[list of perms]` for groups
+                    - e.g. `g+rwx`
+                - `o+[list of perms]` for other  
+            - to remove, use `-` instead of `+`
+        - setting exact perms 
+            - `chmod u/g/o=[list of perms]`
+                - e.g. `chmod g=r family_dog.jpg`
+                    - group only has read perms 
+                - can also make perms empty w `g= ` and leave a space 
+        - chaining perms 
+            - able to make changes to user/group/other all at once
+                - e.g. `chmod u+rw,g=r,o= family_dog.jpg`
+                    user: at least read and right, group: only read, others: no permissions 
+        - octal perms
+            - `stat <file>` also lists permissions, which includes octal perms under access 
+            - values calculated from binary 
+                - r = 4, w = 2, x = 1
+            - `chmod 640 family_dog.jpg`
+## SUID, SGID, and sticky bit (demo)
+- SUID: set user ID for a file
+    - define SUID bit by adding a number before the three digits of the octal value for chmod
+    - e.g. `chmod 4664 <file>`
+        - in place of user execute bit, a capital S appears and indicates that the file will be launched as the user who owns the file, rather than the user who executes the file 
+            - `-rwSrw-r--. 1 aaron aaron 0 Apr 26 05:08 suidfile`
+                - when executed, suidfile will launch and show the user aaron as the one who executed it 
+            - `S`: suid is enabled and there are NOT execute permissions
+            - `s`: suid and execute permissions ARE enabled 
+- SGID: set group ID for a file 
+    - takes a 2 as a leading digit 
+    - e.g. `chmod 2664 <file>`
+        - same deal with the distinction between S and s
+- SUID and SGID can both be set with a leading 6
+- to find files with the user or group ID set
+    - `find . -perm /4000`
+        - find in current directory files with a SUID bit set and ignore the value of the other perms 
+    - `find . -perm /6000` will look for either SUID or SGID or both if they're both set 
+- sticky bit
+    - usually set on shared dirs. Allows user who owns file in dir (and of course root) to be the only one who can remove the file, ignoring the perms of the dir it is w/n
+    - `chmod +t <dir>` or `chmod 1777 <dir>` to set perms 
+        - sticky bit has a leading 1 before the dir perms
+        - `T` listed if dir has no execute perms set in the 'other' group of rwx or a `t` if dir has execute perms 
+## Search for Files
+- `find <path-to-dir> <search-parameters>` "first have to go there, then can find it"
+    - `find /bin/ -name file1.txt` to search in /bin/ for file1.txt 
+    - search parameters 
+        - `-name` case-sensitive file name search 
+            - `-iname` to be case insensitive 
+            - `-name 'f*'` able to use wildcard searches 
+        - modified time != change time 
+            - modification = creation or editing of file
+            - `-mmin` modified minute
+                - `find -mmin 5` to list files modified 5 minutes ago (exactly)
+                    - `find -mmin -5` list all files modified in the last 5 minutes 
+                    - `find -mmin +5` list all files modified more than 5 minutes ago 
+            - `-mtime` list times in days. `1` = 0-24 hours, `2` = 24-48 hours, etc 
+            - change time = when metadata has been changed
+                - `-cmin`
+        - `-size`
+            - `find -size <size>`
+            - use M or G for megabytes or gigabytes 
+            - `find -size 512k` to find files exactly 512kb
+                - `-` for files smaller than and `+` for files larger than 
+        - `-perm`
+            - `find -perm 664` for exactly 664 perms
+            - `find -perm -664` for at least 664 perms 
+            - `find -perm /664` find files w any of those perms for U, G, O
+            - adding in a 0 in any of the spots ignores the search for that level of perms 
+            - can also use the non-octal perms with the query, separated by commas 
+            - look for files others CANNOT read 
+                - `find \! -perm -o=r`
+            - look to see if anyone is able to read the file
+                - `find -perm /u=r,g=r,o=r`
+            - if combining multiple parameters, can use `!` without escaping it, after the first paramter 
+        - `-type`
+            - `-type d` to look only for directories 
+            - `-type f` to only list files 
+        - after the search, can `| wc -l` to count how many results, or `> <filename>` to put output somewhere 
+    - search expressions
+        - link multiple search parameters together 
+            - AND: `find -name "f*" -size 512k`
+            - OR: `find -name "f*" -o -size 512k`
+            - NOT: `find -not -name "f*:"` or `find \! -name "f*:"`
+                - have to escape ! in bash or else bash will want to do something with it 
+## Compare and Manipulate File Content 
+- `cat` to view file
+    `tac` to review file in reverse order 
+- `tail` view last 10 lines of a file by default
+    - `-n 20` will give last 20 lines of file
+- `head` to view top fiew lines of a files
+    - `-n 20` will give first 20 lines of file
+- `sed` "stream editor"
+    - `sed 's/canda/Canada/g' <file>`
+        - surround search query with quotes so bash will ignore it 
+        - `s` = subsitute; search & replace 
+        - `/canda` = exact text to search
+        - `/Canada/` = exact text to replace
+        - `g` to replace all changes on every line
+            - w/o global only replaces the first line per file 
+        - this will only preview the file
+            - add `-i` after `sed` to replace in place 
+        - add `I` next to the `g` for case insensitive replacing 
+- `cut` will extract only the desired strings from a file
+    - `cut -d ' ' -f 1 <file>`
+        - `-d ' '` identifies what delimiter to use; in this case, space 
+            - in a csv/comma delimited file, would use `-d ','`
+        - `-f 1` extract first field on each line 
+- `uniq` and `sort`
+    - `uniq <file>` removes repeating ajacent lines (doesn't remove every dupe)
+        - to get all similar lines ajacent to each other, `sort <file>` and could then `| uniq` to pipe the output to uniq and only get unique values
+- `diff <file> <file>` can see differences b/w files 
+    - `1c1`: line one on file one is different than line one on file two
+    - `<` content exists in first file
+    - `>` content exists in second file 
+    - add `-c` after `diff` to see context of what lines are different 
+        - lines that differ identifies with `!`, `-`, or `+`
+            - `!` = diff b/w lines
+            - `-` or `+` content that was added or removed 
+    - `diff -y` or `sdiff` to compare files side by side 
+        - differences marked with a `|`
+## Pagers and vi demo 
+- pagers: program that allow opening & navigating pages of text on terminal
+    - `less <file-path>` 
+        - more feature rich than `more`
+        - in the bottom left corner, the name of file is highlighted when in a pager 
+        - use arrow keys to navigate file
+        - search for text with `/` and term to search for 
+            - get to the next instance with `n`
+            - case is sensitive by default
+                - type `-i` to ignore case 
+            - move backwards with `N` (shift + n)
+        - `q` to exit
+    - `more <file-path>`
+        - bottom left will show 'more' and a percentage
+        - spacebar to navigate a page at a time 
+- `vim <file>` text editor 
+    - mode sensitive 
+        - `i` to insert & write text to file (will say `-- INSERT --` at bottom of file)
+        - esc to go to default mode 
+            - in default mode can go to line number by typing `:<line-number>`
+        - command mode
+            - `yy` to copy a line of text 
+            - `p` to paste whatever is on the clipboard
+            - `dd` to cut a line of text 
+            - `:w` to write
+            - `:wq` to write & quit 
+            - `:q!` quit without saving 
+    - search with `/`
+        - case sensitive by default 
+            - `/<query>\c` to perform case insensitive search 
+- `vi`
+    - many of the vim commands apply
+    - when using dd, can type a number before it, e.g. `500 dd` (which won't show on the screen) and it'll delete 500 lines from where the cursor is 
+## Search Files With Grep 
+- `grep '<search>' <file-path>`
+    - case sensitive by default
+        - `-i` to ignore case 
+- `grep -r '<search>' /dir/` to search files in a directory 
+    - to search thru system files, need to use sudo 
+- `-v` invert search results; lines that DON'T contain the match
+- `-w` to match only words (and not parts of words)
+    - i.e. searching 'red' only returns red hat and not redhat
+- `-o` only extract matching options from the file
+## Analyze Text Using Basic Regex 
+- specify conditions, tie them together, and only shows what matches all conditions 
+- Regex Operators
+    - ^ $ . * + {} ? | [] () [^]
+        - `^` the line begins with 
+            - only returns lines that begin w given search term 
+            - `grep '^PASS' <file-path>`
+                - list all lines that start with 'PASS' in specified file 
+        - `$` the line ends with
+            - goes at the end of the search term
+            - `grep 'sam$' <file>`
+        - `.` match any one character 
+            - `c.t` would match cat, cot, etc 
+                - also matches if sequence is in word (i.e. execute)
+            - `grep -wr 'c.t' /dir/` search for only bespoke three character words with a wildcard character in the middle in a directory. Returns the results of the matching line and what file it is from
+        - `*` match the previous element 0 or more times 
+            - previous element can be omitted entirely, appear once, or appear multiple times 
+            - `grep -r 'let*' <dir>` would list all matches, including partial words, like le, let, lett, lettt
+            - can be paired w other operators 
+                - `grep -r '/.*/' <dir>`
+                    - search files in a directory for any matches that begin and end with a slash, e.g. `/usr/share/man/`
+        - `+` match the previous element 1 or more times 
+            - must exist at least once, or many times 
+            - `0+` will match strings like 0, 00, 000 etc 
+                - doing this with grep requires escaping w \; grep supports basic regex
+                    - `grep -r '0\+' <dir>` to search for occurences of 0 in files in a dir
+                        - or can use `egrep` or `grep -E` to use extended grep and not deal w escaping special characters 
+                                - `grep -Er '0+' <dir>` 
+                                    - able to use `+` as an operator in the command rather than escaping it 
+                                    - `egrep -r '0+' <dir>` does the same thing 
+        - `{x}` previous element can exist `x` times
+            - `egrep -r '0{3,}' <dir>` results must contain at least three zeros 
+            - `egrep -r '10{,3}' <dir>` results must start with a one, and can have at most three zeros - 0, 1, 2, or 3 zeros allowed 
+            - `egrep -r '0{3}' <dir>` results only show exactly three zeros 
+            - `<term>{min,max}` for syntax 
+        - `?` make previous element optional 
+            - `egrep -r 'disabled?' <dir>` will match disabled, disable, disables
+            - zero or one matches 
+        - `|` match one thing or another
+            - `egrep -r 'enabled|disabled' <dir>`
+        - `[]` ranges or sets 
+            - ranges
+                - `[a-z]` will match any ONE lowercase letter from a to z
+                - `[0-9]` will match any ONE value between 0 and 9
+            - sets
+                - `[abz954]` will match any ONE of the characters in the set 
+            - `egrep -r '/dev/[a-z]*' <dir>` match term that starts with /dev/ and ends with any number of lowercase letters 
+                - returns /dev/sdd and /dev/twa, but not /dev/twa0
+                - `egrep -r '/dev/[a-z]*[0-9]' <dir>` will return ONLY values that end with a number
+                    - returns/ /dev/twa0, /dev/bttv0, but NOT /dev/sdd 
+                    - `egrep -r '/dev/[a-z]*[0-9]?' <dir>` to make the end digit optional 
+        - `()` subexpressions 
+            - `egrep -r '/dev/[a-z]*[0-9]?' <dir>`
+                - doesn't return /dev/tty0p0 
+                - `egrep -r '/dev/([a-z]*[0-9]?)*' <dir>` searches the whole expression again and again until it can't find anything
+                    - returns /dev/scanner, /dev/tty0p0, etc. does NOT return /dev/ttyS0 though 
+                    - `egrep -r '/dev/([a-z]|[A-Z])*[0-9]?' <dir>` search for lowercase or uppercase letters in those iterations. Does not return additional values if there's another slash after them
+        - `[^]` negated ranges or sets 
+            - `egrep -r 'http[^s]' <dir>` to look to see if http is being used instead of https for urls 
+                - using a set with only one character in this case 
+            - for any pattern that you want to match, there are probably multiple ways to do it 
+                - https://regexr.com 
+- `\` for escaping special characters
+- using grep often requires iterating through and refining queries to get the exactly desired info 
+## Archive, Backup, Compress, Unpack, and Uncompress Files
+- archive files
+    - three steps: pack files & dirs in a single file (archive), compress file (compress), copy compressed file somewhere remote (backup)
+    - tar = tape archive
+        - originally meant to save data to backup tapes
+        - can take many files and directories and pack into a tar file "tarball"
+        - specify command line options
+            - `--list` or `-t` or `t` to list 
+            - `--file` or `-f` or `f` to specify a file to reference (e.g. `tar tf <file.tar>` for listing contents ina  tarball)
+            - `--create` or `-c` or `c` to create new archive with the name that is specified immediately after `--file`
+            - `--append` or `-r` or `r` to add a file to an existing tarball 
+            - before extracting a tar archive, always list the files to see what all is contained & where they will be copied to
+                - if a relative path is used when saving the file, e.g. `Pictures/` then it will be unzipped to the directory it is unzipped in
+                - if an absolute path is used when saving the file, e.g. `/home/aaron/work/Pictures/`, then tar will extract to that location 
+            - `--directory` or `-C` to extract to another directory (using relative paths)
+            - `sudo` to make sure all ownership and permission info gets restored as it was 
+            - `tar cfP logs.tar /var/log/` to create a logs.tar file of /var/log/ and include the absolute path 
+- compress & decompress files 
+    - compression helps to reduce storage space & increase speed of copying b/w storage locations 
+        - `gzip <file>`
+        - `bzip2 <file>`
+        - `xz <file`
+    - all the compressors will save the file and delete the uncompressed one 
+    - decompress
+        - `gunzip <file>.gz`
+        - `bunzip <file>.bz2`
+        - `unxz <file>.xz`
+        - or can use `--decompress` flag on original command 
+        - the original, non-compressed file is created & the compressed file gets deleted 
+    - `--keep` or `-k` to avoid automatic deletion of compressed & uncompressed files 
+    - `--list` or `-l` best way to list files in the compressed file 
+- `zip archive <file>`
+    - `zip -r <file> <dir>` to zip a whole directory 
+    - can only compress a single file
+- `tar czf <file>.tar.gz <file-to-archive>` tar can incorporate compression along with archiving
+    - `--gzip` or `z`
+    - `--bzip2` or `j`
+    - `--xz` or `J`
+    - `--autocompress` or `a` to autocompress based on file name extension 
+        - e.g. `tar caf <file>.xz <file-to-archive>` to use .xz to compress w/o defining in flags 
+    - `--extract` or `x` tar can figure out decompression by itself 
+        - `tar xf <file>.tar.gz <destination>`
+## Backup to a Remote System (using native linux tools)
+- rsync (remote synchronization)
+    - copy data through network connection to a server with an SSH daemon running on it and keep the data syncronized
+    - `rsync -a <local-dir> user@ip.of.remote.destination:/directory/to/copy/to/` copy from local to remote 
+        - if run again, will skip data that's already written at the destination 
+        - `rsync -a user@ip.of.remote.destination:/directory/to/copy/from/ /local/dir/` copy from remote to local
+        - `rsync -a local/dir/ /local/dir/` to copy from local dir to elsewhere on same machine 
+- disk imaging
+    - `dd` takes an exact, bit-by-bit copy of each value on a disk
+        - unmount disk/partition that's being backed up so no data changes in the meantime
+        - `sudo dd if=/dev/vda of=diskimage.raw bs=1M status=progress` 
+            - `if` input file: path to disk or file to backup 
+            - `of` output file: where to store image
+            - `bs` block size
+            - `status` show what part of the process is occuring 
+        - `sudo dd if=diskimage.raw of=/dev/vda bs=1M status=progress` to reverse the process 
+## Redirecting Input and Output
+- redirecting output 
+    - `> targetfile` to send output of a command to a file rather than to the terminal window 
+        - target file is overwritten when output is redirected with `>`
+    - `>> targetfile` to send output of a command and add it to the end of the file 
+- stdin, stdout, stderr
+    - two types of output
+        - stdout: regularly processed data (`1>` to output regular output)
+        - stderr: anything that went wrong (`2>` to output errors)
+    - `<` used for standard input 
+    - `grep -r '^The' /etc/ 1>output.txt 2>errors.txt` to handle both stdout and stderr, writing new files
+    - `grep -r '^The' /etc/ 1>>output.txt 2>>errors.txt` to handle stdout and stderr and append the files 
+    - `grep -r '^The' /etc/ > all_output.txt 2>&1` output all stdout and stderr to same file and preserve the order the messages came in 
+        - important to note that `2>&1` must be at the end; "standard error should go to standard out file"
+            - putting it first will redirect errors to the default location of stdout, which is the terminal window
+- redirecting errors
+    - `2> /dev/null` can remove errors (e.g. permission denied from grep) and make them not shown and not saved 
+        - "/dev/null is like the black hole of linux"
+- redirecting input 
+    - `sendemail someone@example.com < emailcontent.txt`
+        - by default, sendemail only allows input from the CLI. By this, it can pull data from the .txt file 
+    - pretty rare use-case  
+    - Here document (heredoc)
+        - `<<EOF` signal that input we want to pass ends BEFORE the last line where EOF is written
+            - any string can replace EOF, but EOF is standard 
+    - Here string
+        - pass single line or string as input to program; whatever follows last <<< is passed in as input 
+- `|` "piping output"
+    - send output from one program to another 
+    - can add as many `|` as you like 
+- have to use `./<filename>` to run a binary script. `sh <filename>` won't work
+## Work with SSL Certificates 
+- nowadays, most certs are technically TLS certs, and NOT SSL
+- certs authenticate website & encrypt traffic 
+- `openssl` to create TLS/SSL certs
+    - can deal with many other cryptography functions
+    - X.509 certs are the main ones used w websites 
+        - if something needs to be read, use `x509`
+- certificate signing request (CSR)
+    - website checks if a certificate has been signed by a trusted approver 
+    - CSR file is sent to a CA if there needs to be global trust of the cert 
+    - when something needs to be outputted, need to use `req`
+- `man openssl` then tab twice - there are an enormous number of help pages 
+    - `/EXAMPLE` to search the man page to see command usages 
+- `openssl req -newkey rsa:2048 -keyout key.pem -out req.pem`
+    - creates a CSR and a new key that's RSA w 2048 bits
+    - `-keyout` defines the name of the key
+    - `-out` defines the name of the CSR 
+- can also generate final signed certificate w/o going to external CA 
+    - only trusted by local machines
+    - `openssl req -x509 -noenc -newkey rsa:4096 -days 365 -keyout myprivate.key -out mycertificate.crt`
+        - `-noenc` don't ask for a password when making the .pem 
+        - in the info to fill out, common name should be the name of the website the cert is requested for 
+        - `openssl x509 -in mycertificate.crt -text`
+            - `-in` to define input and `-text` to output in human readable format (in addition to the base64)
+            - validity defined in 'not before' and 'not after'
+## Basic Git Operations 
+- use distributed version control system to allow a large group of people to work on a software project
+- repositories: places where code is stored
+    - local: personal, just for dev
+        - coding on local computer goes here
+    - remote: central location used by team 
+        - local joins remote when dev pushes up changes 
+- First time log in
+    - helps team members know who updated files. Can change on a per repo basis, but don't use `--global`
+        - `git config user.name "<name>"` in local repo to set config for that repo 
+    - `git config --global user.name "<name>"`
+    - `git config --global user.email "<email>"`
+    - saved in .../.git/config 
+- `git init` to initialize a local git repo 
+## Staging and Committing Changes
+- three steps to modifying code & tracking changes
+    - adding changes in working area 
+    - adding the changes we want to track with Git to the staging area 
+        - git can't know when user is ready to commit changes, so user must explicitly add files to staging 
+    - committing our changes 
+- `git status` to list recent changes 
+- `git reset <file>` to unstage file
+    - all the add options also apply to reset, if wanting to remove from stage
+    - `git rm --cached <file>` also works, but dropping the `--cached` will stop tracking the file entirely 
+        - will also delete the local file 
+- `git add .` stage all files in the current dir 
+- `git add "*.html"` to add any file that has HTML extension
+    - adding the "" is important, otherwise bash might interpret it weirdly 
+- `git add products/` to add all files from products/ dir 
+- `git add "products/*.html"` to add all html files from products dir 
+- `git commit -m "<message>"` to add a commit message. Wrapping with "" tells bash to take it literally, not as another flag 
+## Git Branches 
+- master branch: default branch
+    - may be used to publish stable version of software project 
+- `git branch <branch-name>` to switch to branch
+- `git branch --delete <branch-name>` to delete branch 
+    - or `git branch -d <branch-name>`
+- `git branch --list` or `git branch` to list all branches 
+- `git checkout <branch-name>` to switch to another branch 
+    - `git checkout -b <branch-name>` to create a new branch
+- `git log` to view past git commits on project 
+    - `git log --raw` to be able to navigate through all changes in a 'more' sort of way 
+- `git show <part of commit ID string>` to view the specific lines of code that were modified 
+    - e.g. `git show d263d81` will show commit d263d8186f2399980c764f34424116c3818a03d, without having to type it all out
+    - newest commit is shown at the top
+- HEAD points to the current focus of the terminal
+    - generally points at latest commit in current branch, but can be modified to point at older ones 
+- to make a merge on CLI, need to be in the branch where the merge will be being added to (not on the new branch that's getting merged) 
+- the most important part of git: being able to connect to remote repos & collaborate with people 
+    - `git remote -v` to view configured remote repos 
+    - `git push origin master` 
+        - push the local repo to the origin repo which is defined in git remote then push the master branch there
+- `git clone <connection string>` 
+    - download existing remote repo to a new local repo 
+
+# Operations Deployment
+## Boot, Reboot, and Shutdown a System Safely 
+- reboot and shutdown (must prepend `sudo` for users other than root for all systemctl commands) 
+    - `systemctl reboot` 
+    - `systemctl poweroff`
+        - both reboot and poweroff can take the `--force` flag to force shutdown in the case of apps misbehaving
+        - for a very VERY last resort, can send `--force --force` to reboot or poweroff (like unplugging computer from the wall) 
+    - `shutdown 02:00` to shutdown at 0200 during the night
+        - uses 24 hour time 
+        - `shutdown +15` to shutdown in 15 minutes 
+        - `shutdown -r` to reboot, then can add other flags for timing 
+        - `shutdown -r +1 'Scheduled restart to do an offline-backup of our database'` 'wall message' that can be provided to warn users of inpending shutdown
+            - single quotes are important 
+## Changing Operating Modes 
+- change default boot target 
+    - `systemctl get-default` to list default boot target 
+    - `sudo systemctl set-default multi-user.target` to set new default boot target 
+        - enabling GUI is skipped; everything is text based & multiple users can log in and use the machine 
+        - `sudo systemctl isolate graphical.target` switch to a new boot target, without setting it as default. In this case, enable GUI again
+        - other targets
+            - `emergency.target` load up as few programs as possible; helpful in debugging. Root file system mounted as read only
+            - `rescue.target` a few essential services are loaded & put into a root shell that has root access
+                - to use emergency and rescue targets, root user MUST have a password 
+## Installing, Configuring, and Troubleshooting Bootloaders 
+- bootloader is one of the first programs that starts, and loads the kernel
+- GRUB is the most popular one 
+- `/boot` (shown from `lsblk`) indicates the partition boot is on, and can be visited to view boot config files 
+    - `GRUB_TIMEOUT` is the most common thing to change, which gives the option how long that pages stays up when booting 
+    - `GRUB_CMDLINE_LINUX` is used to pass different values to the linux kernel 
+    - `sudo grub2-mkconfig -o /boot/grub2/grub.cfg` to generate grub config file after making changes via mkconfig 
+- `/dev/sda/` is a device file for configuring the disk named sda 
+## Use Scripting to Automate System Maintenance Tasks
+- after successfully logging into system, dropped into bash environment, which interprets commands 
+    - using it on the cli is called interactively
+    - scripts: add multiple instructions for the command interpreter 
+        - `script.sh` helps to add .sh to identify with `ls`, but not strictly required 
+        - `#!/bin/bash` MUST be on the first line
+            - `#!` is called the shebang, and is followed by the path to the interpreter 
+        - `#` by itself identifies a comment 
+        - can write commands in the script the same way as the interactive CLI (i.e. commands, pipes, redirection)
+        - to be run, the script must be executable, either by owner (u), group (g), or others (o) 
+            - run either with the full path `/home/aaron/script.sh` or `./script.sh` if in current dir 
+- bash built ins
+    - `help` all by itself to show build in commands for bash 
+        - for help with built-ins, type `help` first then the name of the built in; `help if`
+    - can use `if` and `test` to avoid overwriting files (i.e. when the script creates files) 
+        ```
+        #!/bin/bash
+        
+        if test -f /tmp/archive.tar.gz; then 
+            mv /tmp/archive.tar.gz /tmp/archive.tar.gz.OLD
+            tar acf /tmp/archive.tar.gz /etc/dnf
+        else
+            tar acf /tmp/archive.tar.gz /etc/dnf/
+        fi
+        ```
+    - `grep -q '5' /etc/default/grub` can search for '5' in the file and does so quietly; only outputting matches 
+    - `cat /etc/cron.hourly/0anacron` to look at a 'cheat sheet' for common syntax for a shell script 
+## Managing Startup Processes and Services
+- boot up
+    - init: initialization system 
+    - units: text files that describe startup logic 
+        - service units
+            - clear instructions like how to start program, recover from crashes
+            - manage lifecycle of an app 
+            - `man systemd.service`
+            - `systemctl cat sshd.service` to view service unit configuration for the sshd service 
+            - `sudo systecmtl edit --ful sshd.service` to update file 
+            - `sudo systemctl status sshd.service` to view status of sshd service 
+            - `sudo systemctl start sshd.service` to start the sshd service 
+            - `sudo systemctl restart sshd.service` disruptive reload of program settings
+                - `sudo systemctl reload sshd.service` for less disruptive reload of program settings 
+                    - not all apps support this
+                        - `sudo systemctl reload-or-restart sshd.service` to try a gentle reload then restart if that doesn't work
+            - `sudo systemctl disable sshd.service` to prevent sshd from loading when the machine is booted 
+            - `sudo systemctl enable sshd.service` to enable sshd loading when machine is booted 
+                - `systemctl enable --now sshd.service` enable and start up newly installed service
+                - `systemctl disable --now sshd.service` disable from starting and boot and immediately stop service (would end ssh session)
+            - `sudo systemctl mask atd.service` service cannot be enabled or started. Ensures service can never be started, regardless of who wants to do it
+                `sudo systemctl unmask atd.service` to remove the mask 
+            - `sudo systemctl list-units --type service --all` to view all installed units 
+        - socket
+        - device
+        - timer 
+## Create systemd Services
+- make systemd wait a couple seconds `RestartSec=` to avoid creating a restart loop 
+- in `/lib/systemd/system` can view an existing service file and copy it to start making a new service
+## Diagnose and Manage Processes 
+- `ps` to inspect processes (shows state of processes in a point in time)
+    - supports unix (uses `-`) and bsd (just type the options) options. 
+    - only shows processes launched in current terminal and session
+    - `ps aux` list all user-facing process
+        - shows all processes in order based on PID 
+        - USER: what user the process is running under
+        - PID: process ID 
+        - %CPU: how much of the capacity of a single core of processing is being used at the exact time the command was run. If it's running on multiple cores, can be over 100% 
+        - %MEM: how much total memory process is using
+        - START: when the process was started
+        - TIME: how much CPU time the process has used over the entire time it has been up 
+            - calulated by how many seconds of 100% CPU usage the process has used in a single second. E.g. if 100% for 2 seconds, gets 2s in time. If 50% for 4 seconds, gets 2s in time
+        - COMMAND: command + options used to start the process
+            - commands in `[]` are kernel processes running inside of a privileged area
+    - `ps u <PID>` to list only the process on the specified PID 
+    - `ps u -U <user>` to list all processes running under user
+    - `pgrep -a <process>` search through all processes for process ID for processes that match on the name
+    - process niceness (-20 to 19)
+        - lower number means less nice & higher priority 
+        - important processes should have lower nice values
+            - particularly important at launch time
+            - `nice -n <nice-value> <process>` to set nice values 
+                - processes inherit the niceness value of the process that ran them (e.g. if bash is assigned a specific nice value, then commands that are run in bash will have the same nice value)
+                - regular user can only assign nice values 0-19
+                - only root can assign negative values for nice values 
+                - `renice <nice value> <PID>` to change the user for a process that already has a nice value
+                    - can only lower the renice value once as a regular user. Can increase it any number of times. Sudo must be used to lower renice multiple times 
+            - `ps l` to show nice values (that's a lowercase L)
+                - `ps lax | grep <term>` to sort output with grep 
+    - `ps fax` to view tree view of processes (think f = forest)
+        - `ps faux` to combine forest view and usual columns of info 
+    - SIGKILL has highest priority & instantly kills a process
+        - `kill -L` gives a list of signal values & their names 
+            - `kill -<signal-name> <PID>` (can use SIG or not before the signal name or user the value)
+                - e.g. `1) SIGHUP` can be referenced by `kill -SIGHUP 1147`, `kill -HUP 1147`, or `kill -1 1147`
+                - can only kill processes owned by current user. Must use sudo for other processes 
+            - `kill <PID>` will gracefully kill processes based on PID 
+            - `pkill -KILL <process-name>` to kill processes based on process name 
+            - ctrl + C to cancel a process 
+            - ctrl + Z in a program/process will put it in the background; not close or quit, but escape to the terminal. Can type fg to bring app to the foreground and continue. 
+            - `<command> &` - use the amperstand to background and keep running an app 
+                - `jobs` to list background jobs that are running
+                - `fg <app-number>` to pull program to the front. do NOT use PID to pull it up again 
+                - `bg <app-number>` to put app back to background running state 
+    - `lsof <app/process location>` to list open files. Tends to work best w sudo 
+        - `sudo lsof -p 1 > /home/bob/files.txt`
+            - list all files opened with process ID of 1 
+- `top` 
+    - constantly reorders processes to show most intensive usage at the top 
+## Locate and Analyze System Log Files 
+- logging daemons collect all status, error, warning messages and stores in /var/logs
+    - rsyslog (rock-fast system for log processing)
+- `grep -r 'ssh' /var/log/` to search for logs
+    - `less /var/log/secure` to further look into files from the previous search 
+    - `less /var/log/messages` holds lots of general logs 
+- `ls /var/log` to view files; if `boot.log-<date>`, indicates archived logs 
+- `tail -F /var/log/secure` follow updates to log 
+    - ctrl + C to cancel 
+- `journalctl` to view all journalctl logs
+    - analyze logs more efficiently 
+    - type `>` when opened to go to the end
+    - `journalctl /bin/sudo` to list all commands that ran using sudo 
+    - `journalctl -u sshd.service` view logs for specific service
+        - `-u` says to log based on the 'unit' sshd.service
+    - `journalctl -e` to go to the end of the output immediately; like tail -f
+    - `journalctl -f` to monitor logs live 
+    - `journalctl -p err` 
+        - list logs with priority code of 'err'
+        - can either tab tab or info/warning/err/crit are among the options 
+    - `journalctl -p info -g '^b'`
+        - use grep expression to search, along with a priority level 
+    - `journalctl -S 02:00`
+        - set a specific time to search
+        - `journalctl -S 01:00 -U 02:00`
+            - range of times 
+        - `journalctl -S '2021-11-16 12:04:55'`
+            - can use dates 
+    - `journalctl -b 0`
+        - view logs for current boot
+        - `journalctl -b -1` 
+            - view logs for previous boot; must have logs to disk enabled 
+- `last` 
+    - view who logged in most recently
+    - `lastlog`
+        - view all logins to system over time 
+## Schedule Tasks to Run at a Set Time
+- cron
+    - system must be turned on at the time the cron job is to run. If it's off, cronjob will be skipped 
+    - `cat /etc/crontab` to have an example for syntax 
+    - minute, hour, day of month, month, day of week is the order 
+    - `*` match all possible values (i.e. every hour)
+    - `,` match multiple values (i.e. `15,45` to run at minute 15 and 45)
+    - `-` range of values (i.e. `2-4` to run at hours 2, 3, and 4)
+    - `/` specifies steps (default is incrememnts of one; `*/4` job will run every four hours)
+    - `crontab -e` to create crontab for current user & everyone else 
+        - use `which <app>` to identify run location for app 
+            - i.e. `35 6 * * * /usr/bin/touch test_passed` to touch the file `test_passed` when the minute is 35 and the hour is 6, and do it every day 
+    - `crontab -l` to list current crontab 
+        - `sudo crontab -l` to list sudo crontab 
+        - to change crontab of other users, either log into other user acct, or `sudo crontab -e -u <user>`
+        - `crontab -r` to remove crontab 
+    - directories for cron jobs
+        - `/etc/cron.daily/`, `/etc/cron.hourly/`, `/etc/cron.monthly/`, `/etc/cron.weekly/`
+    - to use a file for crontab, it must not have an extension (`shellscript` fine, `shellscript.sh` not)
+        - `sudo cp shellscript /etc/cron.hourly/` to move file to run hourly via cron 
+- anacron (smallest unit is per day)
+    - don't care specific time of day the job is run, just that it gets run at some point 
+        - if system is off when a job should run, anacron will run the job when the system comes online again 
+            - can make it delay when to run things so it doesn't run a bunch of missed jobs at the same time 
+    - `sudo vim /etc/anacrontab` to view current anacron tab 
+    - specify full path to script or command to run 
+    - `anacron -T` can test to see if the anacrontab is correct. If it is, no output provided; only shows errors 
+- at
+    - run commands at a specific time. Meant to be used for one-time executions 
+    - multiple ways to express what time to use 
+        - `at 'August 20 2022'`
+        - `at '2:30 August 20 2022'`
+        - `at 'now + 30 minutes'`
+    - `atq` to view at queue
+    - `at -c <job-number>` to show what job will run 
+    - `atrm <job-number>` to remove a job
+## Verify Completion of Scheduled Jobs 
+- cron
+    - `sudo cat /var/log/cron`
+        - all events for cron, anacron, and at are recorded by default 
+        - `sudo grep CMD /var/log/cron` to view only successful execution of commands 
+    - `cat /etc/crontab` to view system-wide crontab 
+        - `MAILTO=root` sends notifications to root mailbox on system 
+- anacron
+    - `sudo vim /etc/anacrontab` to view anacrontab
+        - `sudo anacron -n` make anacron run today's scheduled jobs (think: now)
+        - `sudo anacron -n -f` force anacron to run today's jobs, even if it has been run today
+    - `sudo grep anacron /var/log/cron` 
+        - view events relating to anacron in logs 
+        - can pipe to `less` to be able to page through the results easier 
+        - `sudo grep test_job /var/log/cron`
+            - see only relevant lines of specific job in log 
+        - doesn't show output, just says that output was produced
+            - can pipe output to systemd-cat utility to show human-readable output, which would show with `journalctl -e` 
+                - e.g. in anacrontab `1 10 test_job /bin/echo "Testing anacron" | systemd-cat --identifier=test_job`
+- at
+    - `at 'now + 1 minute` if not supplying a command, at will go into a prompt `at>` for a command to be manually typed in. Escape that prompt with ctrl + D
+    - `sudo grep atd /var/log/cron` 
+        - view logs created from at daemon; only shows starting of job 
+        - if mail service is configured, would get notified, otherwise would have to use systemd-cat
+            - e.g. `at 'now + 1 minute' echo "My at job produced this output" | systemd-cat --identifier=at_scheduled_backup`   
+                - `journalctl | grep at_scheduled_backup` to view that output in logs 
+- /var/log/messages or /var/log/messages may contain scheduled jobs logs if there's not a logfile for cron 
+## Manage Software with the Package Manager 
+- apt (advanced package tool)
+    - ubuntu tool for updating
+    - `sudo apt update/upgrade`
+    - `sudo apt install nginx` or better `sudo apt update && sudo apt install nginx` to make sure latest version is installed 
+        - most software packages install dependencies 
+- `dpkg --listfiles nginx` to list dependency packages and files that were installed 
+- `dpkg --search /usr/sbin/nginx` to identify what package a given directory belongs to
+- `apt show libnginx-mod-stream` (name of package) describes what a package includes & what it does 
+- `apt search nginx` looks for the text 'nginx' in the description and file names of installed packages 
+    - `apt search --names-only nginx` to only look for package names and exclude the description 
+- `sudo apt remove nginx` to remove the package - doesn't remove the dependencies
+    - `sudo apt autoremove` to remove unneeded dependencies 
+    - `sudo apt autoremove nginx` to remove nginx and its dependencies 
+- `sudo cat /etc/apt/source.list` to identify distribution locations for ubuntu 
+    - main/restricted/universe/multiverse are locations allowed 
+## Configure the Repositories of the Package Manager 
+- enable third-party repositories in Ubuntu
+    - `curl "https://download.docker.com/linux/ubuntu/gpg" -o docker.key` to curl url for gpg key and -o to output it to a specific file
+    - `gpg --dearmor docker.key` to export to `docker.key.gpg`
+    - `sudo mv docker.key.gpg /etc/apt/keyrings`
+    - `sudo vi /etc/apt/sources.list.d/docker.list` and add `deb [sign-by=/etc/apt/keyrings/docker.key.gpg] https://download.docker.com/linux/ubuntu jammy stable` to let ubuntu know where to find the repository 
+        - instructions usually provided on websites that offer third-party software 
+    - `sudo add-apt-repository ppa:jgraphics-drivers/ppa` (username and repo name)
+        - it's common for repos to be named ppa for this purpose, and this does all the above automatically 
+    - `add-apt-repository --list` to see all apt repos 
+## Install Software by Compiling Source Code
+- download git repository via git url
+    - README.md typically includes instructions for compiling from source 
+- install library & compilation tools
+    - `sudo apt install libncursesw5-dev autotools-dev autoconf automake build-essential`
+    - after running, in the dir should be `autogen.sh`; run w `./autogen.sh`
+    - should create a file named configure
+        - `./configure --help`
+        - `./configure` will run the script 
+    - `make` then tab tab to see all targets 
+        - just running `make` in the right directory will compile things 
+        - `sudo make install` to to compile and move to /usr/local/bin so that the app can be easily launched, since linux looks there for launching apps 
+## Verify the Integrity and Availability of Resources
+- `df -h` disk free, human readable 
+    - recommended to ignore filesystems that start w tmpfs, which only exist in computer memory 
+- `du -sh /bin`: summarize how much disk space the directory uses in human readable format 
+    - `-s` only lists files in the directory, not every file in every directory w/n `/bin`
+- `free -h` check available memory; human readable 
+- `uptime` cpu usage of programs running on server
+    - lists load average for last minute, last 5 minutes, and last 15 minutes
+    - load average of 1.0 = 1 CPU core has been used in last minute at whole capacity
+    - e.g. if `load average: 6.00, 0.31, 0.18` indicates that 6 cores were used at full capacity in the last minute, but in the last 5 and 15 minutes, the cores weren't used much at all 
+        - averages like `load average: 6.12, 7.12, 7.30` on an 8 core system indicates that it's being nearly fully utilized, and probably need to figure out how to reduce the load or scale up the processor 
+- `lscpu` list info about cpu 
+- `lspci` info about pci devices on system
+- `sudo xfs_repair -v /dev/vdb1` 
+    - repairing must occur when file system is unmounted
+- `sudo fsck.ext4 -v -f -p /dev/vdb2`
+    - repair an ext4 file system with the flags verbose logging, force a check, and use preen mode to fix simple problems w/o asking questions
+    - `-p` is the most important option to use. "remember: problem"
+- `systemctl list-dependencies`
+    - white dot = stopped (not all programs should be running all the times)
+    - green dot = service is running 
+    - `systemctl status <service>.service` to check any issues w service 
