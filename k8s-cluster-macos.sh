@@ -13,7 +13,6 @@ function notify() {
 function create_cluster() {
   echo "Creating Kubernetes cluster..."
   doctl kubernetes cluster create "$CLUSTER_NAME" --region "$REGION" --count 1 --size s-1vcpu-2gb --wait || return 1
-  doctl kubernetes cluster kubeconfig save "$CLUSTER_NAME"
   echo "Cluster created."
 
   local delete_time=$(($(date +%s) + TTL_MINUTES * 60))
