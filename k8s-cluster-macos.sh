@@ -18,9 +18,9 @@ function create_cluster() {
   local delete_time=$(($(date +%s) + TTL_MINUTES * 60))
   echo "$delete_time" > "$STATE_FILE"
 
-  ( sleep $((TTL_MINUTES * 60 - 600)); notify "Cluster will be destroyed in 10 minutes." ) &
-  ( sleep $((TTL_MINUTES * 60 - 300)); notify "Cluster will be destroyed in 5 minutes." ) &
-  ( sleep $((TTL_MINUTES * 60)); delete_cluster ) &
+  ( sleep $((TTL_MINUTES * 60 - 600)); notify "Cluster will be destroyed in 10 minutes" ) &
+  ( sleep $((TTL_MINUTES * 60 - 300)); notify "Cluster will be destroyed in 5 minutes" ) &
+  ( sleep $((TTL_MINUTES * 60)); notify "Cluster is being destroyed"; delete_cluster  ) &
 }
 
 function delete_cluster() {
