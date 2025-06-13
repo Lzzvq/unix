@@ -27,6 +27,13 @@ function delete_cluster() {
   echo "Destroying cluster..."
   doctl kubernetes cluster delete "$CLUSTER_NAME" --force
 
+  echo "Checking for load balancers to delete..."
+  lbs=$(doctl compute load-balancer list --format ID,Name --no-header | awk '{print $1}')
+  for lb in $lbs; do
+    echo "Deleting load balancer with ID: $lb"
+    doctl compute load-balancer delete "$lb" --force
+  done
+
   echo "Cleaning kubeconfig..."
   kubectl config delete-cluster "do-$REGION-$CLUSTER_NAME" || true
   kubectl config delete-context "do-$REGION-$CLUSTER_NAME" || true
