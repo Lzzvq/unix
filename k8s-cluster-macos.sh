@@ -19,6 +19,9 @@ function stop_watcher() {
 }
 
 function watch_cluster_ttl() {
+  local warned_10m=false
+  local warned_5m=false
+
   while true; do
     [[ -f "$STATE_FILE" ]] || exit 0
 
@@ -30,22 +33,25 @@ function watch_cluster_ttl() {
       notify "Cluster is being destroyed..."
       delete_cluster
       exit 0
-    elif (( remaining == 600 )); then
+    elif (( remaining <= 600 )) && [[ "$warned_10m" == false ]]; then
       notify "Cluster will be destroyed in 10 minutes."
-    elif (( remaining == 300 )); then
+      warned_10m=true
+    elif (( remaining <= 300 )) && [[ "$warned_5m" == false ]]; then
       notify "Cluster will be destroyed in 5 minutes."
+      warned_5m=true
     fi
 
     sleep 30
   done
-} &
+}
+
 
 function create_cluster() {
   echo "Creating Kubernetes cluster..."
   doctl kubernetes cluster create "$CLUSTER_NAME" --region "$REGION" --count 1 --size s-1vcpu-2gb --wait || return 1
   echo "Cluster created."
 
-  notify "Cluster '$CLUSTER_NAME' has been created."
+  notify "Cluster $CLUSTER_NAME has been created."
 
   local delete_time=$(($(date +%s) + TTL_MINUTES * 60))
   echo "$delete_time" > "$STATE_FILE"
