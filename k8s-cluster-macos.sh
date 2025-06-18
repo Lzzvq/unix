@@ -45,6 +45,8 @@ function create_cluster() {
   doctl kubernetes cluster create "$CLUSTER_NAME" --region "$REGION" --count 1 --size s-1vcpu-2gb --wait || return 1
   echo "Cluster created."
 
+  notify "Cluster '$CLUSTER_NAME' has been created."
+
   local delete_time=$(($(date +%s) + TTL_MINUTES * 60))
   echo "$delete_time" > "$STATE_FILE"
 
