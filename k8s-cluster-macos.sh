@@ -30,7 +30,7 @@ function watch_cluster_ttl() {
     local remaining=$((delete_time - current_time))
 
     if (( remaining <= 0 )); then
-      notify "Cluster is being destroyed..."
+      notify "Cluster is being destroyed"
       delete_cluster
       exit 0
     elif (( remaining <= 600 )) && [[ "$warned_10m" == false ]]; then
