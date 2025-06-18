@@ -1,14 +1,44 @@
 #!/bin/zsh
 
 # CONFIGURATION
-CLUSTER_NAME="auto-cluster"
+CLUSTER_NAME="dev-cluster"
 REGION="sfo3"
 TTL_MINUTES=60
 STATE_FILE="$HOME/.cluster-state"
+WATCHER_PID_FILE="$HOME/.cluster-watcher.pid"
 
 function notify() {
   osascript -e "display notification \"$1\" with title \"Cluster Manager\""
 }
+
+function stop_watcher() {
+  if [[ -f "$WATCHER_PID_FILE" ]]; then
+    kill $(cat "$WATCHER_PID_FILE") 2>/dev/null || true
+    rm -f "$WATCHER_PID_FILE"
+  fi
+}
+
+function watch_cluster_ttl() {
+  while true; do
+    [[ -f "$STATE_FILE" ]] || exit 0
+
+    local current_time=$(date +%s)
+    local delete_time=$(cat "$STATE_FILE")
+    local remaining=$((delete_time - current_time))
+
+    if (( remaining <= 0 )); then
+      notify "Cluster is being destroyed..."
+      delete_cluster
+      exit 0
+    elif (( remaining == 600 )); then
+      notify "Cluster will be destroyed in 10 minutes."
+    elif (( remaining == 300 )); then
+      notify "Cluster will be destroyed in 5 minutes."
+    fi
+
+    sleep 30
+  done
+} &
 
 function create_cluster() {
   echo "Creating Kubernetes cluster..."
@@ -18,14 +48,13 @@ function create_cluster() {
   local delete_time=$(($(date +%s) + TTL_MINUTES * 60))
   echo "$delete_time" > "$STATE_FILE"
 
-  ( sleep $((TTL_MINUTES * 60 - 600)); notify "Cluster will be destroyed in 10 minutes" ) &
-  ( sleep $((TTL_MINUTES * 60 - 300)); notify "Cluster will be destroyed in 5 minutes" ) &
-  ( sleep $((TTL_MINUTES * 60)); notify "Cluster is being destroyed"; delete_cluster  ) &
+  stop_watcher
+  watch_cluster_ttl &
+  echo $! > "$WATCHER_PID_FILE"
 }
 
 function delete_cluster() {
   echo "Destroying cluster..."
-  doctl kubernetes cluster delete "$CLUSTER_NAME" --force
 
   echo "Checking for load balancers to delete..."
   lbs=$(doctl compute load-balancer list --format ID,Name --no-header | awk '{print $1}')
@@ -34,6 +63,8 @@ function delete_cluster() {
     doctl compute load-balancer delete "$lb" --force
   done
 
+  doctl kubernetes cluster delete "$CLUSTER_NAME" --force
+
   echo "Cleaning kubeconfig..."
   kubectl config delete-cluster "do-$REGION-$CLUSTER_NAME" || true
   kubectl config delete-context "do-$REGION-$CLUSTER_NAME" || true
@@ -41,6 +72,7 @@ function delete_cluster() {
 
   echo "Cluster destroyed and kubeconfig cleaned."
   rm -f "$STATE_FILE"
+  stop_watcher
 }
 
 function extend_cluster() {
@@ -50,16 +82,15 @@ function extend_cluster() {
   fi
 
   local extend_minutes=$1
-  local current_time=$(date +%s)
   local original_delete_time=$(cat "$STATE_FILE")
   local new_delete_time=$((original_delete_time + extend_minutes * 60))
 
   echo "$new_delete_time" > "$STATE_FILE"
   echo "Cluster extended by $extend_minutes minutes."
 
-  ( sleep $((extend_minutes * 60 - 600)); notify "Extended cluster will be destroyed in 10 minutes." ) &
-  ( sleep $((extend_minutes * 60 - 300)); notify "Extended cluster will be destroyed in 5 minutes." ) &
-  ( sleep $((extend_minutes * 60)); delete_cluster ) &
+  stop_watcher
+  watch_cluster_ttl &
+  echo $! > "$WATCHER_PID_FILE"
 }
 
 case "$1" in
